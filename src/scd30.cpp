@@ -59,7 +59,7 @@ SCD30::SCD30(TwoWire* wire, Model* _model, updateMessageCallback_t _updateMessag
   retry = 0;
   while (retry < MAX_RETRY && !scd30->selfCalibrationEnabled(config.useASC)) retry++;
   if (retry >= MAX_RETRY) {
-    ESP_LOGW(TAG, "Failed to disable ASC (Automatic Self Calibration)");
+    ESP_LOGW(TAG, "Failed to configure ASC (Automatic Self Calibration)");
   }
   ESP_LOGD(TAG, "Automatic Self calibration %s", scd30->selfCalibrationEnabled() ? "enabled" : "disabled");
 
