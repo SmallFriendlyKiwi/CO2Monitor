@@ -48,6 +48,7 @@ namespace WifiManager {
   ESPAsync_WMParameter* mqttPortParam;
   ESPAsync_WMParameter* mqttUseTlsParam;
   ESPAsync_WMParameter* mqttInsecureParam;
+  ESPAsync_WMParameter* useASCParam;
   ESPAsync_WMParameter* altitudeParam;
   ESPAsync_WMParameter* co2YellowThresholdParam;
   ESPAsync_WMParameter* co2RedThresholdParam;
@@ -96,6 +97,7 @@ namespace WifiManager {
     char mqttPort[6];
     char mqttUseTls[6];
     char mqttInsecure[6];
+    char useASC[6];
     char altitude[5];
     char co2YellowThreshold[5];
     char co2RedThreshold[5];
@@ -134,6 +136,7 @@ namespace WifiManager {
     sprintf(mqttPort, "%u", config.mqttServerPort);
     sprintf(mqttUseTls, "%s", config.mqttUseTls ? "true" : "false");
     sprintf(mqttInsecure, "%s", config.mqttInsecure ? "true" : "false");
+    sprintf(useASC,"%s", config.useASC ? "true" : "false");
     sprintf(altitude, "%u", config.altitude);
     sprintf(co2YellowThreshold, "%u", config.co2YellowThreshold);
     sprintf(co2RedThreshold, "%u", config.co2RedThreshold);
@@ -172,6 +175,7 @@ namespace WifiManager {
     ESP_LOGD(TAG, "mqttPort: %s", mqttPort);
     ESP_LOGD(TAG, "mqttUseTls: %s", mqttUseTls);
     ESP_LOGD(TAG, "mqttInsecure: %s", mqttInsecure);
+    ESP_LOGD(TAG, "useASC: %s", useASC);
     ESP_LOGD(TAG, "altitude: %s", altitude);
     ESP_LOGD(TAG, "co2YellowThreshold: %s", co2YellowThreshold);
     ESP_LOGD(TAG, "co2RedThreshold: %s", co2RedThreshold);
@@ -209,6 +213,7 @@ namespace WifiManager {
     mqttHostParam = new ESPAsync_WMParameter("mqttHost", "MQTT host", mqttHost, MQTT_HOSTNAME_LEN + 1, config.mqttHost);
     mqttPortParam = new ESPAsync_WMParameter("mqttServerPort", "MQTT port", mqttPort, 6, "config.mqttServerPort");
     mqttUseTlsParam = new ESPAsync_WMParameter("mqttUseTls", "MQTT use TLS", mqttUseTls, 6, "config.mqttUseTls");
+    useASCParam = new ESPAsync_WMParameter("useASC", "Use ASC (Automatic Self Calibration)", useASC, 6, "config.useASC");
     mqttInsecureParam = new ESPAsync_WMParameter("mqttInsecure", "MQTT Ignore certificate errors", mqttInsecure, 6, "config.mqttInsecure");
     altitudeParam = new ESPAsync_WMParameter("altitude", "Altitude", altitude, 5, "config.altitude");
     co2YellowThresholdParam = new ESPAsync_WMParameter("co2YellowThreshold", "CO2 Yellow threshold ", co2YellowThreshold, 6, "config.co2YellowThreshold");
@@ -248,6 +253,7 @@ namespace WifiManager {
     wifiManager->addParameter(mqttPortParam);
     wifiManager->addParameter(mqttUseTlsParam);
     wifiManager->addParameter(mqttInsecureParam);
+    wifiManager->addParameter(useASCParam);
     wifiManager->addParameter(altitudeParam);
     wifiManager->addParameter(co2YellowThresholdParam);
     wifiManager->addParameter(co2RedThresholdParam);
@@ -291,6 +297,7 @@ namespace WifiManager {
       ESP_LOGD(TAG, "mqttHost: %s", mqttHostParam->getValue());
       ESP_LOGD(TAG, "mqttPort: %s", mqttPortParam->getValue());
       ESP_LOGD(TAG, "mqttUseTls: %s", mqttUseTlsParam->getValue());
+      ESP_LOGD(TAG, "useASC: %s", useASCParam->getValue());
       ESP_LOGD(TAG, "mqttInsecure: %s", mqttInsecureParam->getValue());
       ESP_LOGD(TAG, "altitude: %s", altitudeParam->getValue());
       ESP_LOGD(TAG, "co2YellowThreshold: %s", co2YellowThresholdParam->getValue());
@@ -329,6 +336,7 @@ namespace WifiManager {
       config.mqttServerPort = (uint16_t)atoi(mqttPortParam->getValue());
       config.mqttUseTls = strcmp("true", mqttUseTlsParam->getValue()) == 0;
       config.mqttInsecure = strcmp("true", mqttInsecureParam->getValue()) == 0;
+      config.useASC = strcmp("true", useASCParam->getValue()) == 0;
       config.altitude = (uint16_t)atoi(altitudeParam->getValue());
       config.co2YellowThreshold = (uint16_t)atoi(co2YellowThresholdParam->getValue());
       config.co2RedThreshold = (uint16_t)atoi(co2RedThresholdParam->getValue());
@@ -370,6 +378,7 @@ namespace WifiManager {
     delete mqttPortParam;
     delete mqttUseTlsParam;
     delete mqttInsecureParam;
+    delete useASCParam;
     delete altitudeParam;
     delete co2YellowThresholdParam;
     delete co2RedThresholdParam;

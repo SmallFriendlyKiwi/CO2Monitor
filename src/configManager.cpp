@@ -73,6 +73,7 @@ void setupConfigManager() {
 #define DEFAULT_MQTT_PASSWORD   "co2monitor"
 #define DEFAULT_MQTT_USE_TLS           false
 #define DEFAULT_MQTT_INSECURE          false
+#define DEFAULT_USE_ASC                false
 #define DEFAULT_DEVICE_ID                  0
 #define DEFAULT_ALTITUDE                   5
 #define DEFAULT_CO2_YELLOW_THRESHOLD     700
@@ -117,6 +118,7 @@ void getDefaultConfiguration(Config& config) {
   config.mqttUseTls = DEFAULT_MQTT_USE_TLS;
   config.mqttInsecure = DEFAULT_MQTT_INSECURE;
   config.mqttServerPort = DEFAULT_MQTT_PORT;
+  config.useASC = DEFAULT_USE_ASC;
   config.altitude = DEFAULT_ALTITUDE;
   config.co2YellowThreshold = DEFAULT_CO2_YELLOW_THRESHOLD;
   config.co2RedThreshold = DEFAULT_CO2_RED_THRESHOLD;
@@ -157,6 +159,7 @@ void logConfiguration(const Config& config) {
   ESP_LOGD(TAG, "mqttUseTls: %s", config.mqttUseTls ? "true" : "false");
   ESP_LOGD(TAG, "mqttInsecure: %s", config.mqttInsecure ? "true" : "false");
   ESP_LOGD(TAG, "mqttPort: %u", config.mqttServerPort);
+  ESP_LOGD(TAG, "useASC: %s", config.useASC  ? "true" : "false");
   ESP_LOGD(TAG, "altitude: %u", config.altitude);
   ESP_LOGD(TAG, "co2YellowThreshold: %u", config.co2YellowThreshold);
   ESP_LOGD(TAG, "co2RedThreshold: %u", config.co2RedThreshold);
@@ -223,6 +226,7 @@ boolean loadConfiguration(Config& config) {
   config.mqttServerPort = doc["mqttServerPort"] | DEFAULT_MQTT_PORT;
   config.mqttUseTls = doc["mqttUseTls"] | DEFAULT_MQTT_USE_TLS;
   config.mqttInsecure = doc["mqttInsecure"] | DEFAULT_MQTT_INSECURE;
+  config.useASC = doc["useASC"] | DEFAULT_USE_ASC;
   config.altitude = doc["altitude"] | DEFAULT_ALTITUDE;
   config.co2YellowThreshold = doc["co2YellowThreshold"] | DEFAULT_CO2_YELLOW_THRESHOLD;
   config.co2RedThreshold = doc["co2RedThreshold"] | DEFAULT_CO2_RED_THRESHOLD;
@@ -283,6 +287,7 @@ boolean saveConfiguration(const Config& config) {
   doc["mqttServerPort"] = config.mqttServerPort;
   doc["mqttUseTls"] = config.mqttUseTls;
   doc["mqttInsecure"] = config.mqttInsecure;
+  doc["useASC"] = config.useASC;
   doc["altitude"] = config.altitude;
   doc["co2YellowThreshold"] = config.co2YellowThreshold;
   doc["co2RedThreshold"] = config.co2RedThreshold;

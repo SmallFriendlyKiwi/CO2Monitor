@@ -19,6 +19,7 @@ struct Config {
   bool mqttUseTls;
   bool mqttInsecure;
   uint16_t mqttServerPort;
+  bool useASC;
   uint16_t altitude;
   uint16_t co2YellowThreshold;
   uint16_t co2RedThreshold;

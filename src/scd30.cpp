@@ -57,11 +57,11 @@ SCD30::SCD30(TwoWire* wire, Model* _model, updateMessageCallback_t _updateMessag
   ESP_LOGD(TAG, "Forced Recalibration reference: %u ppm", scd30->getForcedCalibrationReference());
 
   retry = 0;
-  while (retry < MAX_RETRY && !scd30->selfCalibrationEnabled(true)) retry++;
+  while (retry < MAX_RETRY && !scd30->selfCalibrationEnabled(config.useASC)) retry++;
   if (retry >= MAX_RETRY) {
-    ESP_LOGW(TAG, "Failed to enable self calibration");
+    ESP_LOGW(TAG, "Failed to disable ASC (Automatic Self Calibration)");
   }
-  ESP_LOGD(TAG, "Self calibration %s", scd30->selfCalibrationEnabled() ? "enabled" : "disabled");
+  ESP_LOGD(TAG, "Automatic Self calibration %s", scd30->selfCalibrationEnabled() ? "enabled" : "disabled");
 
   retry = 0;
   while (retry < MAX_RETRY && !scd30->startContinuousMeasurement()) retry++;
