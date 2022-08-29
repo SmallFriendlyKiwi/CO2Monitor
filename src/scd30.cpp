@@ -12,7 +12,7 @@
 static const char TAG[] = __FILE__;
 
 #define MAX_RETRY 5
-#define SCD30_INTERVAL 15
+#define SCD30_INTERVAL 5
 
 SCD30::SCD30(TwoWire* wire, Model* _model, updateMessageCallback_t _updateMessageCallback) {
   this->model = _model;
