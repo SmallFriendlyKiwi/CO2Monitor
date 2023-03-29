@@ -1,7 +1,7 @@
 #ifndef _HOUSEKEEPING_H
 #define _HOUSEKEEPING_H
 
-#include "globals.h"
+#include <globals.h>
 #include <Ticker.h>
 
 namespace housekeeping {
@@ -11,5 +11,6 @@ namespace housekeeping {
 }
 
 extern TaskHandle_t sensorsTask;
+extern TaskHandle_t neopixelMatrixTask;
 
 #endif
