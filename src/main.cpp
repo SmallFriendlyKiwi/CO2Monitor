@@ -7,6 +7,7 @@
 #include <i2c.h>
 #include <esp_event.h>
 #include <esp_err.h>
+#include <esp_task_wdt.h>
 
 #include <configManager.h>
 #include <mqtt.h>
@@ -18,6 +19,7 @@
 #include <lcd.h>
 #include <trafficLight.h>
 #include <neopixel.h>
+#include <neopixelMatrix.h>
 #include <featherMatrix.h>
 #include <hub75.h>
 #include <bme680.h>
@@ -31,6 +33,7 @@ Model* model;
 LCD* lcd;
 TrafficLight* trafficLight;
 Neopixel* neopixel;
+NeopixelMatrix* neopixelMatrix;
 FeatherMatrix* featherMatrix;
 HUB75* hub75;
 SCD30* scd30;
@@ -38,10 +41,12 @@ SCD40* scd40;
 SPS_30* sps30;
 BME680* bme680;
 TaskHandle_t sensorsTask;
+TaskHandle_t neopixelMatrixTask;
 
 bool hasLEDs = false;
 bool hasNeoPixel = false;
 bool hasFeatherMatrix = false;
+bool hasNeopixelMatrix = false;
 bool hasHub75 = false;
 
 const uint32_t debounceDelay = 50;
@@ -54,12 +59,16 @@ volatile uint8_t wifiDisconnected = 0;
 uint32_t lastWifiReconnectAttempt = 0;
 
 void ICACHE_RAM_ATTR buttonHandler() {
-  buttonState = (digitalRead(TRIGGER_PIN) ? 0 : 1);
+  buttonState = (digitalRead(BTN_1) ? 0 : 1);
   lastBtnDebounceTime = millis();
 }
 
-void stopHub75DMA() {
+void prepareOta() {
   if (hasHub75 && hub75) hub75->stopDMA();
+  if (hasNeopixelMatrix && neopixelMatrix) {
+    hasNeopixelMatrix = false;
+    neopixelMatrix->stop();
+  }
 }
 
 void updateMessage(char const* msg) {
@@ -85,6 +94,7 @@ void modelUpdatedEvt(uint16_t mask, TrafficLightStatus oldStatus, TrafficLightSt
   if (hasLEDs && trafficLight) trafficLight->update(mask, oldStatus, newStatus);
   if (hasNeoPixel && neopixel) neopixel->update(mask, oldStatus, newStatus);
   if (hasFeatherMatrix && featherMatrix) featherMatrix->update(mask, oldStatus, newStatus);
+  if (hasNeopixelMatrix && neopixelMatrix) neopixelMatrix->update(mask, oldStatus, newStatus);
   if (hasHub75 && hub75) hub75->update(mask, oldStatus, newStatus);
   if ((mask & M_PRESSURE) && I2C::scd40Present() && scd40) scd40->setAmbientPressure(model->getPressure());
   if ((mask & M_PRESSURE) && I2C::scd30Present() && scd30) scd30->setAmbientPressure(model->getPressure());
@@ -180,9 +190,11 @@ void eventHandler(void* event_handler_arg, esp_event_base_t event_base, int32_t 
 }
 
 void setup() {
+  esp_task_wdt_init(20, true);
+
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
-  pinMode(TRIGGER_PIN, INPUT_PULLUP);
+  pinMode(BTN_1, INPUT_PULLUP);
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_VERBOSE);
   ESP_LOGI(TAG, "CO2 Monitor v%s. Built from %s @ %s", APP_VERSION, SRC_REVISION, BUILD_TIMESTAMP);
@@ -195,9 +207,6 @@ void setup() {
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, eventHandler, NULL));
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, eventHandler, NULL));
 
-  // try to connect with known settings
-  WiFi.begin();
-
   setupConfigManager();
   if (!loadConfiguration(config)) {
     getDefaultConfiguration(config);
@@ -208,12 +217,10 @@ void setup() {
   hasLEDs = (config.greenLed != 0 && config.yellowLed != 0 && config.redLed != 0);
   hasNeoPixel = (config.neopixelData != 0 && config.neopixelNumber != 0);
   hasFeatherMatrix = (config.featherMatrixClock != 0 && config.featherMatrixData != 0);
+  hasNeopixelMatrix = (config.neopixelMatrixData != 0 && config.matrixColumns != 0 && config.matrixRows != 0);
   hasHub75 = (config.hub75B1 != 0 && config.hub75B2 != 0 && config.hub75ChA != 0 && config.hub75ChB != 0 && config.hub75ChC != 0 && config.hub75ChD != 0
     && config.hub75Clk != 0 && config.hub75G1 != 0 && config.hub75G2 != 0 && config.hub75Lat != 0 && config.hub75Oe != 0 && config.hub75R1 != 0 && config.hub75R2 != 0);
-
-
-  lastWifiReconnectAttempt = millis();
-  Wire.begin((int)SDA, (int)SCL, (uint32_t)I2C_CLK);
+  Wire.begin((int)SDA_PIN, (int)SCL_PIN, (uint32_t)I2C_CLK);
 
   I2C::initI2C();
 
@@ -226,7 +233,12 @@ void setup() {
   if (hasLEDs) trafficLight = new TrafficLight(model, config.redLed, config.yellowLed, config.greenLed);
   if (hasNeoPixel) neopixel = new Neopixel(model, config.neopixelData, config.neopixelNumber);
   if (hasFeatherMatrix) featherMatrix = new FeatherMatrix(model, config.featherMatrixData, config.featherMatrixClock);
+  if (hasNeopixelMatrix) neopixelMatrix = new NeopixelMatrix(model, config.neopixelMatrixData, config.matrixColumns, config.matrixRows, config.matrixLayout);
   if (hasHub75) hub75 = new HUB75(model);
+
+  // try to connect with known settings
+  WiFi.begin();
+  lastWifiReconnectAttempt = millis();
 
   mqtt::setupMqtt(
     model,
@@ -261,15 +273,23 @@ void setup() {
     2,                  // priority of the task
     1);                 // CPU core
 
+  if (hasNeopixelMatrix) {
+    neopixelMatrixTask = neopixelMatrix->start(
+      "neopixelMatrixLoop",
+      4096,
+      3,
+      1);
+  }
+
   housekeeping::cyclicTimer.attach(30, housekeeping::doHousekeeping);
 
-  OTA::setupOta(stopHub75DMA);
+  OTA::setupOta(prepareOta, setPriorityMessage, clearPriorityMessage);
 
-  attachInterrupt(TRIGGER_PIN, buttonHandler, CHANGE);
+  attachInterrupt(BTN_1, buttonHandler, CHANGE);
 
   ESP_LOGI(TAG, "Setup done.");
 #ifdef SHOW_DEBUG_MSGS
-  if (I2C::lcdPresent()) {
+  if (lcd) {
     lcd->updateMessage("Setup done.");
   }
 #endif
@@ -285,7 +305,7 @@ void loop() {
       ESP_LOGD(TAG, "lastConfirmedBtnPressedTime - millis() %u", btnPressTime);
       if (btnPressTime < 2000) {
         digitalWrite(LED_PIN, LOW);
-        stopHub75DMA();
+        prepareOta();
         WifiManager::startConfigPortal(updateMessage, setPriorityMessage, clearPriorityMessage);
       } else if (btnPressTime > 5000) {
         calibrateCo2SensorCallback(420);
